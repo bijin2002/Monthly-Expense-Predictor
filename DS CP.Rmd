@@ -1,0 +1,151 @@
+---
+title: "DataScience courseproject"
+output: html_notebook
+---
+```{r}
+library(ggplot2)
+library(ggmap)
+library(dplyr)
+library(plotly)
+library(cowplot)
+
+data<-read.csv("Inc_Exp_Data.csv",header=TRUE)
+glimpse(data)
+
+```
+
+
+```{r}
+#summary of data
+
+summary(data)
+```
+
+
+```{r}
+#counts of highest qualified member
+a<-ggplot(data, aes(x=Highest_Qualified_Member,fill=Highest_Qualified_Member)) + geom_bar() + labs(title="Frequency bar chart")
+a
+```
+
+
+```{r}
+#monthly expense vs highest qualified member
+ggplot(data, aes(x=Highest_Qualified_Member, y=Mthly_HH_Expense,fill=Highest_Qualified_Member)) +geom_bar(stat="identity", position=position_dodge())
+```
+```{r}
+x <- ggplot(data, aes(Highest_Qualified_Member,Mthly_HH_Expense )) +
+  geom_jitter(aes(color =Highest_Qualified_Member ), alpha = 0.7) +
+  theme_light()+scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+y <- ggplot(data, aes(Highest_Qualified_Member, Mthly_HH_Income)) +
+  geom_jitter(aes(color = Highest_Qualified_Member), alpha = 0.7) +
+  theme_light()+scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+p <- plot_grid(x, y) 
+title <- ggdraw() + draw_label("2. Correlation between Charges and Sex / Children covered by insurance", fontface='bold')+scale_x_discrete(guide = guide_axis(n.dodge=2))
+plot_grid(title, p, ncol=1, rel_heights=c(0.1, 1))
+```
+
+
+```{r}
+#monthly expense vs monthly income
+b<-ggplot(data = data, aes(x = Mthly_HH_Income, y = Mthly_HH_Expense, color = Highest_Qualified_Member )) +
+  geom_line() +
+  labs(x = "monthly income", y = "monthly expense")
+b
+```
+
+
+```{r}
+#density graph of qualified members
+density_graph<-ggplot(data, 
+       aes(x=Highest_Qualified_Member,fill=Highest_Qualified_Member)) +
+  geom_density(alpha = 0.4) +
+  labs(title = "density graph of count")
+density_graph
+```
+
+
+```{r}
+x<-ggplot(data, aes(Highest_Qualified_Member,Mthly_HH_Expense)) +
+  geom_jitter(color = "blue", alpha = 0.5) +
+  theme_light()
+x
+```
+
+
+```{r}
+#scatter plot for monthly income vs expense
+plot(data$Mthly_HH_Income,data$Mthly_HH_Expense)
+cor(data$Mthly_HH_Income,data$Mthly_HH_Expense)
+r<-lm(Mthly_HH_Expense~Mthly_HH_Income,data=data)
+abline(r)
+```
+
+
+```{r}
+n_train <- round(0.9 * nrow(data))
+train_indices <- sample(1:nrow(data), n_train)
+Data_train <- data[train_indices, ]
+Data_test <- data[-train_indices, ]
+formula_0 <- as.formula(" Mthly_HH_Expense~No_of_Earning_Members+Mthly_HH_Income+No_of_Fly_Members+Annual_HH_Income")
+model_0 <- lm(formula_0, data = Data_train)
+summary(model_0)
+```
+
+
+```{r}
+r_sq_0 <- summary(model_0)$r.squared
+
+#predict data on test set
+prediction_0 <- predict(model_0, newdata = Data_test)
+#calculating the residuals
+residuals_0 <- Data_test$Mthly_HH_Expense - prediction_0
+#calculating Root Mean Squared Error
+rmse_0 <- sqrt(mean(residuals_0^2))
+```
+
+
+```{r}
+formula_1 <- as.formula("Mthly_HH_Expense~Emi_or_Rent_Amt+Mthly_HH_Income+No_of_Fly_Members")
+
+model_1 <- lm(formula_1, data = Data_train)
+summary(model_1)
+r_sq_1 <- summary(model_1)$r.squared
+
+prediction_1 <- predict(model_1, newdata = Data_test)
+
+residuals_1 <- Data_test$Mthly_HH_Expense - prediction_1
+rmse_1 <- sqrt(mean(residuals_1^2))
+```
+
+
+```{r}
+print(paste0("R-squared for first model:", round(r_sq_0, 4)))
+print(paste0("R-squared for new model: ", round(r_sq_1, 4)))
+print(paste0("RMSE for first model: ", round(rmse_0, 2)))
+print(paste0("RMSE for new model: ", round(rmse_1, 2)))
+```
+
+
+```{r}
+sigma(model_1)/mean(data$Mthly_HH_Expense)
+```
+
+
+```{r}
+#Prediction vs. Real values
+Data_test$prediction <- predict(model_1, newdata = Data_test)
+ggplot(Data_test, aes(x = prediction, y =Mthly_HH_Expense )) + 
+  geom_point(color = "blue", alpha = 0.7) + 
+  geom_abline(color = "red") +
+  ggtitle("Prediction vs. Real values")
+```
+
+
+```{r}
+Bob <- data.frame(Emi_or_Rent_Amt=4000,Mthly_HH_Income=10000,No_of_Fly_Members=3)
+print(paste0("monthly expense  for Bob: ", round(predict(model_1, Bob), 2)))
+```
+
